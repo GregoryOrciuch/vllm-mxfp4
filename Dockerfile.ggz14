@@ -510,6 +510,7 @@ ARG GFX_ARCH
 ARG MAX_JOBS
 
 COPY r4d_radiance_extras.patch        /tmp/r4d_radiance_extras.patch
+COPY build_radiance117_mxfp4.py       /tmp/build_radiance117_mxfp4.py
 COPY patch_*.py _patchlib.py install_radiance_hooks.py /build/
 COPY radiance_nvfp4.py \
      radiance_gemm.py \
@@ -545,6 +546,17 @@ RUN set -e; \
   cd libr4d; \
   GFX_ARCH="${GFX_ARCH}" OUT="${SP}/r4d.so" MAX_JOBS="${MAX_JOBS}" ./build.sh; \
   test -f "$SP"/r4d.so
+
+# Optional MXFP4 decode path, pinned to Radiance 1.17.0; the legacy library remains unchanged.
+RUN set -e; cd "$(mktemp -d)"; \
+  git clone --depth 1 --branch v1.17.0 https://codeberg.org/StillDeadcode/radiance.git radiance; \
+  test "$(git -C radiance rev-parse HEAD)" = 19d4e8fe0e18071b9b6300f15fc4ccf38dc4fa3d; \
+  python3 /tmp/build_radiance117_mxfp4.py radiance/libr4d radiance117_mxfp4.hip; \
+  hipcc -O3 -ffp-contract=off -std=c++17 -fPIC -shared --offload-arch="${GFX_ARCH}" \
+    $(python3 -m pybind11 --includes) -Iradiance/libr4d radiance117_mxfp4.hip -o "${SP}/radiance117_mxfp4.so"; \
+  install -d /usr/share/doc/radiance117; \
+  install -m 644 radiance/LICENSE radiance/NOTICE /usr/share/doc/radiance117/; \
+  rm -rf radiance radiance117_mxfp4.hip
 
 # --------------------------------------------------------- the patch chain --------
 # The union of the chains the launchers already run at container start, launcher order.
@@ -674,7 +686,7 @@ ENV VLLM_LOGGING_LEVEL=INFO \
     RADIANCE_MXFP4_A_TILED_MIN_M=513 \
     RADIANCE_MXFP4_WPERM=1 \
     RADIANCE_MXFP4_EPIFAST=1 \
-    RADIANCE_MXFP4_R4D_DECODE_MAX_M=0 \
+    RADIANCE_MXFP4_R4D_DECODE_MAX_M=64 \
     RADIANCE_MXFP4_HOIST_QUANT=1 \
     RADIANCE_MXFP4_TRACED_QUANT=1 \
     RADIANCE_MXFP4_SANITIZE=0 \

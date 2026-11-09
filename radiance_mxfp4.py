@@ -80,15 +80,18 @@ if R4D_DECODE_MAX_M > 0:
         raise RuntimeError("[radiance.mxfp4] RADIANCE_MXFP4_R4D_DECODE_MAX_M needs "
                            "RADIANCE_MXFP4_WPERM=1: the r4d kernel only reads fragment order")
     try:
-        import r4d as _r4d
-        if _r4d.select("gemm_nt", M=8, K=5120, N=5120, dtype="mxfp4a8") is None:
-            sys.stderr.write("[radiance.mxfp4] r4d has no mxfp4a8 gemm_nt; decode stays on ours\n")
+        import radiance117_mxfp4 as _r4d
+        sys.stderr.write(f"[radiance.mxfp4] Radiance 1.17 decode ON (M<={min(R4D_DECODE_MAX_M, 64)})\n")
+    except ImportError:
+        try:
+            import r4d as _r4d
+            if _r4d.select("gemm_nt", M=8, K=5120, N=5120, dtype="mxfp4a8") is None:
+                _r4d = None
+            else:
+                _r4d.launch = _r4d.gemm_mxfp4a8_nt_m64
+        except Exception as _e:                     # noqa: BLE001
+            sys.stderr.write(f"[radiance.mxfp4] r4d import failed, decode stays on ours: {_e!r}\n")
             _r4d = None
-        else:
-            sys.stderr.write(f"[radiance.mxfp4] r4d decode kernel ON (M<={R4D_DECODE_MAX_M})\n")
-    except Exception as _e:                     # noqa: BLE001
-        sys.stderr.write(f"[radiance.mxfp4] r4d import failed, decode stays on ours: {_e!r}\n")
-        _r4d = None
 
 
 def _r4d_cfg(M, K):
@@ -445,10 +448,10 @@ def mxfp4_linear(x: torch.Tensor, weight: torch.Tensor, weight_scale: torch.Tens
         out = _slab[PAD_OUT:PAD_OUT + M * N].view(M, N)   # view keeps the slab alive
     else:
         out = torch.empty((M, N), device=x.device, dtype=torch.bfloat16)
-    if (_r4d is not None and folded and M <= R4D_DECODE_MAX_M
+    if (_r4d is not None and folded and 0 < M <= min(R4D_DECODE_MAX_M, 64)
             and N % 16 == 0 and K % 32 == 0):
         _wv, _sk, _mb, _npw = _r4d_cfg(M, K)
-        _r4d.gemm_mxfp4a8_nt_m64(x_fp8.data_ptr(), x_scale.data_ptr(), weight.data_ptr(),
+        _r4d.launch(x_fp8.data_ptr(), x_scale.data_ptr(), weight.data_ptr(),
                                  weight_scale.data_ptr(), weight_ref.data_ptr(), out.data_ptr(),
                                  M, K, N, _wv, _sk, _mb, _npw,
                                  torch.cuda.current_stream().cuda_stream)

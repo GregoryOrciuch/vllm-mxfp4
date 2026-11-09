@@ -47,6 +47,15 @@ path, with what each step costs and what to do when one of them stops.
 
 Repo version `0.12.0`; pinned image `stilldeadcode/vllm-radiance:0.9.3`.
 
+The fork's baked images use the Radiance 1.17.0 MXFP4 decode kernel by default while
+retaining vLLM. Build with `Dockerfile.ggz14` or `Dockerfile.ggz14.top`; they set
+`RADIANCE_MXFP4_WPERM=1` and `RADIANCE_MXFP4_R4D_DECODE_MAX_M=64`. Set the latter
+to 0 to use the existing kernel instead.
+The new kernel covers folded MXFP4 decode shapes with M=1..64, N divisible by 16 and
+K divisible by 32; other shapes use the existing path. The published 0.9.3 image alone
+does not contain this extension. Synthetic correctness and graph replay were tested on
+one R9700; full-model performance and model output have not yet been validated.
+
 | | |
 |---|---|
 | **Tested hardware** | 2 x Radeon AI PRO R9700 (gfx1201), tensor parallel |
