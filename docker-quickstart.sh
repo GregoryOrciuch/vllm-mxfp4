@@ -23,13 +23,13 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 cd "$SCRIPT_DIR"
 
 # ---------------------------------------------------------------- knobs
-# All of these are the launcher's own variables, so anything set here is also what serve-mxfp4.sh
-# sees. Nothing in this file is a second source of truth for a default.
+# Defaults for this guided path; explicit environment overrides are passed to the launcher.
 RUNTIME=${RUNTIME:-docker}
 PORT=${PORT:-8080}
 MODELS=${MODELS:-$HOME/models}
 NAME=${NAME:-vllmmxfp4074}
-IMAGE=${IMAGE:-stilldeadcode/vllm-radiance:0.9.3}
+IMAGE=${IMAGE:-radiance117-integration:test}
+export CACHE=${CACHE:-$HOME/.radiance-cache-radiance117}
 # A first start compiles Triton and inductor kernels before the engine comes up, which is several
 # minutes of looking idle; later starts reuse that cache. This is a ceiling on how long we WATCH,
 # not an expected duration -- nothing is killed when it expires, we just stop polling.
@@ -71,7 +71,8 @@ Options:
 
 Environment (the launcher's own variables -- see ./serve-mxfp4.sh --help for the rest):
   MODELS=~/models   where the checkpoints go            RUNTIME=docker  docker or podman
-  IMAGE=...:0.9.3   container image                     NAME=...        container name
+  IMAGE=...         container image                     NAME=...        container name
+  CACHE=...         compilation cache directory (default ~/.radiance-cache-radiance117)
   TP=1|2|3          tensor-parallel size (auto)         GPUS=0,1        HIP indices to serve on
                     (one card: ./serve-tp1.sh has the same effect -- README "One card (TP=1)")
 

@@ -47,6 +47,12 @@ path, with what each step costs and what to do when one of them stops.
 
 Repo version `0.12.0`; pinned image `stilldeadcode/vllm-radiance:0.9.3`.
 
+`docker-quickstart.sh` defaults to the locally built `radiance117-integration:test` image and
+`~/.radiance-cache-radiance117` (the launcher appends profile-specific suffixes). The image is
+not published: if it is missing, build it with
+`docker build -f Dockerfile.ggz14.top -t radiance117-integration:test .`. Set `IMAGE` and
+`CACHE` to override these defaults.
+
 The fork's baked images use the Radiance 1.17.0 MXFP4 decode kernel by default while
 retaining vLLM. Build with `Dockerfile.ggz14` or `Dockerfile.ggz14.top`; they set
 `RADIANCE_MXFP4_WPERM=1` and `RADIANCE_MXFP4_R4D_DECODE_MAX_M=64`. Set the latter
