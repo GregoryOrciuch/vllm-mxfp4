@@ -110,6 +110,13 @@ have() { command -v "$1" >/dev/null 2>&1; }
 RT=(${RUNTIME})
 RT_NAME=${RT[0]}
 
+ensure_quickstart_image() {
+  if [ "$IMAGE" = radiance117-integration:test ] && ! "${RT[@]}" image inspect "$IMAGE" >/dev/null 2>&1; then
+    say "  building $IMAGE from Dockerfile.ggz14.top (this can take several minutes)"
+    "${RT[@]}" build -f "$SCRIPT_DIR/Dockerfile.ggz14.top" -t "$IMAGE" "$SCRIPT_DIR" || return 1
+  fi
+}
+
 # ---------------------------------------------------------------- tiny HTTP client
 # The host is not assumed to have curl: a minimal server install often does not, and the one
 # place we are guaranteed a curl is inside the image itself (its own healthcheck uses one).
@@ -359,6 +366,10 @@ if [ "$ACTION" != restart ] && port_open "$PORT" && ! container_running; then
       "running containers: $("${RT[@]}" ps --format '{{.Names}}' 2>/dev/null | tr '\n' ' ')" \
       "stop it with: $RT_NAME stop <name>" \
       "or serve on another port: ./docker-quickstart.sh --port 8081"
+fi
+
+if ! ensure_quickstart_image; then
+  die "failed to build $IMAGE" "check the build output above; the running server was left unchanged"
 fi
 
 if [ "$ACTION" = restart ] && container_running; then

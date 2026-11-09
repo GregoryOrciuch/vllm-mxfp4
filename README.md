@@ -49,9 +49,8 @@ Repo version `0.12.0`; pinned image `stilldeadcode/vllm-radiance:0.9.3`.
 
 `docker-quickstart.sh` defaults to the locally built `radiance117-integration:test` image and
 `~/.radiance-cache-radiance117` (the launcher appends profile-specific suffixes). The image is
-not published: if it is missing, build it with
-`docker build -f Dockerfile.ggz14.top -t radiance117-integration:test .`. Set `IMAGE` and
-`CACHE` to override these defaults.
+not published, so quickstart builds it from `Dockerfile.ggz14.top` if it is missing. Set `IMAGE`
+and `CACHE` to override these defaults; other images retain their existing pull behavior.
 
 The fork's baked images use the Radiance 1.17.0 MXFP4 decode kernel by default while
 retaining vLLM. Build with `Dockerfile.ggz14` or `Dockerfile.ggz14.top`; they set
